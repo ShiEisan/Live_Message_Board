@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>即時留言牆（簡單版）</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; }
+        h1 { color: #444; }
+        .message { border-bottom: 1px solid #ddd; padding: 10px 0; }
+        .timestamp { color: #888; font-size: 0.9em; }
+        #form { margin-top: 20px; }
+        input, textarea { width: 100%; margin-top: 5px; padding: 8px; }
+        button { margin-top: 10px; padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>💬 即時留言牆</h1>
+    <div id="messages">Loading messages...</div>
+
+    <div id="form">
+        <h3>留下你的訊息：</h3>
+        <input type="text" id="name" placeholder="你的名字">
+        <textarea id="content" rows="3" placeholder="寫點什麼吧..."></textarea>
+        <button onclick="sendMessage()">送出留言</button>
+    </div>
+
+    <script>
+    async function fetchMessages() {
+        const res = await fetch('/api/messages');
+        const data = await res.json();
+        const container = document.getElementById('messages');
+        container.innerHTML = '';
+
+        if (data.length === 0) {
+            container.innerHTML = '<p>目前還沒有留言。</p>';
+            return;
+        }
+
+        data.forEach(msg => {
+            const el = document.createElement('div');
+            el.className = 'message';
+            el.innerHTML = `
+                <strong>${escapeHtml(msg.name)}</strong>：
+                ${escapeHtml(msg.content)}<br>
+                <span class="timestamp">${msg.timestamp}</span>
+            `;
+            container.appendChild(el);
+        });
+    }
+
+    async function sendMessage() {
+        const name = document.getElementById('name').value.trim();
+        const content = document.getElementById('content').value.trim();
+
+        if (!name || !content) {
+            alert('請輸入名字和內容');
+            return;
+        }
+
+        await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, content })
+        });
+
+        document.getElementById('content').value = '';
+        fetchMessages(); // 立即更新畫面
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, m => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[m]));
+    }
+
+    // 定時每 5 秒刷新一次留言
+    fetchMessages();
+    setInterval(fetchMessages, 5000);
+    </script>
+</body>
+</html>
